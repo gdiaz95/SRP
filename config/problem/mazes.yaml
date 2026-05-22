@@ -1,0 +1,17 @@
+defaults:
+  - hyp: mazes_default
+  - model: dt_net_2d_parallel #dt_net_recall_2d #ff_net_recall_2d #dt_net_2d_parallel
+
+name: mazes
+test_data: 21
+train_data: 21
+# data_type: 1K_trial
+# data_type: 7_green
+data_type: zind/big_floorplans/5_green
+# data_type: trial
+numchunks: 2
+overlap: 16 
+parallel_testing: False
+model:
+  width: 128
+

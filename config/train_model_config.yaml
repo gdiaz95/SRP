@@ -1,0 +1,18 @@
+defaults:
+  - problem: mazes
+  - override hydra/job_logging: custom
+  - _self_
+
+hydra:
+  run:
+    dir: ./outputs/${name}/training-${run_id}
+  job_logging:
+    handlers:
+      file:
+        filename: train.log
+
+train_log: train_log
+name: training_default
+retrain: True
+# model_path: "/home/gabriel/Lydia/dpth_copy2/outputs/training_default/training-homeless-Sok/model_best.pth" base model
+model_path: "/home/gabriel/Lydia/dpth_copy2/outputs/training_default/training-homeless-Sok/model_best.pth"

@@ -48,7 +48,8 @@ def get_dataloaders(problem_args):
                                    test_batch_size=problem_args.hyp.test_batch_size,
                                    train_data=problem_args.train_data,
                                    test_data=problem_args.test_data,
-                                   data_type=problem_args.data_type)
+                                   data_type=problem_args.data_type,
+                                   train_data_path=problem_args.train_data_path)
     elif problem_args.name == "chess":
         return prepare_chess_loader(train_batch_size=problem_args.hyp.train_batch_size,
                                     test_batch_size=problem_args.hyp.test_batch_size,

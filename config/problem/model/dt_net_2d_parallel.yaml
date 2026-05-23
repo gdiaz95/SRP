@@ -1,7 +1,7 @@
 model: dt_net_2d_parallel
 model_path:
-width: 100
+width: 128
 max_iters: 30
 test_iterations:
-  low: 20
-  high: 50
+  low: 2
+  high: 70

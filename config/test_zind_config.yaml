@@ -1,5 +1,6 @@
 defaults:
-  - problem: mazes
+  - problem: mazes_zind
+  - override problem/model: dt_net_2d_parallel
   - override hydra/job_logging: custom
   - _self_
 
@@ -11,16 +12,14 @@ hydra:
       file:
         filename: testing.log
 
-name: testing_default
+name: testing_zind
 
 problem:
   model:
     test_iterations:
-      low: 40
+      low: 20
       high: 140
-    # Path to the directory containing model_best.pth and .hydra/config.yaml
-    # Example: outputs/training_default/training-<run_id>
-    model_path: outputs/training_default/training-homeless-Sok
+    model_path: outputs/training_default/training-unlost-Tamar
 
 quick_test: True
 termination_condition: True

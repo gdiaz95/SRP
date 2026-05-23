@@ -1,0 +1,20 @@
+defaults:
+  - hyp: mazes_zind
+  - model: dt_net_2d_parallel
+  - _self_
+
+name: mazes
+test_data: 21
+train_data: 21
+# data_type selects the test set folder under data/ (e.g. zind/big_floorplans/5_green)
+data_type: zind/big_floorplans/5_green
+# Path to the ZInD fine-tuning training dataset (relative to project root)
+train_data_path: data/zind/mixed_2_3_4_big_floorplan
+numchunks: 2
+overlap: 16
+parallel_testing: False
+# Termination condition hyperparameters (Table 16 in paper)
+tc_threshold: 0.50
+tc_first_batch: 20
+model:
+  width: 128

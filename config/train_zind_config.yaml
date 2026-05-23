@@ -1,5 +1,5 @@
 defaults:
-  - problem: mazes
+  - problem: mazes_zind
   - override hydra/job_logging: custom
   - _self_
 
@@ -11,8 +11,8 @@ hydra:
       file:
         filename: train.log
 
-name: training_default
-# Set retrain: True and provide model_path to fine-tune from a checkpoint.
-# For training from scratch, leave retrain: False.
-retrain: False
+name: training_zind
+# Set model_path to the best checkpoint from synthetic maze training.
+# Example: outputs/training_default/training-<run_id>/model_best.pth
+retrain: True
 model_path:

@@ -1,5 +1,6 @@
 */output*/
 outputs/
+Lydia/
 plots/output.pdf/
 data/
 .cml_*temp.sh
@@ -133,3 +134,12 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# uv
+uv.lock
+.python-version
+
+#temporal files
+generate_hard_maze.py
+Robotica_2026.md
+Robotica_rebuttal.md

@@ -1,64 +1,46 @@
 """ mazes_data.py
     Maze related dataloaders
-
-    Collaboratively developed
-    by Avi Schwarzschild, Eitan Borgnia,
-    Arpit Bansal, and Zeyad Emam.
-
-    Developed for DeepThinking project
-    October 2021
 """
 import os
 import torch
 from torch.utils import data
 from easy_to_hard_data import MazeDataset
 
-# Ignore statemenst for pylint:
-#     Too many branches (R0912), Too many statements (R0915), No member (E1101),
-#     Not callable (E1102), Invalid name (C0103), No exception (W0702),
-#     Too many local variables (R0914), Missing docstring (C0116, C0115),
-#     Unused import (W0611).
 # pylint: disable=R0912, R0915, E1101, E1102, C0103, W0702, R0914, C0116, C0115, W0611
 
+# Project root is three levels up from this file (deepthinking/utils/mazes_data.py)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-def prepare_maze_loader(train_batch_size, test_batch_size, train_data, test_data, data_type,shuffle=True):
 
-    base_dir_test= os.path.join("../../../data", data_type)
-    base_dir_train= os.path.join("../../../data", 'zind/mixed_2_3_4_big_floorplan')
-    # base_dir_train= os.path.join("/mnt/drive2/gabriel_data/Lydia/train/", 'mixed_2_3_4') #big ones
-    # base_dir_test= os.path.join("/mnt/drive2/gabriel_data/Lydia/test/", data_type)
-    # print(base_dir_train)
-    # print(base_dir_test)
-    train_data = MazeDataset(base_dir_train, train=True, size=train_data, download=False)
-    # print(base_dir_test)
+def _resolve_path(path):
+    """Return absolute path: pass through if already absolute, else resolve from project root."""
+    if os.path.isabs(path):
+        return path
+    return os.path.join(_PROJECT_ROOT, path)
+
+
+def prepare_maze_loader(train_batch_size, test_batch_size, train_data, test_data,
+                        data_type, train_data_path, shuffle=True):
+
+    base_dir_train = _resolve_path(train_data_path)
+    base_dir_test = os.path.join(_PROJECT_ROOT, "data", data_type)
+
+    train_dataset = MazeDataset(base_dir_train, train=True, size=train_data, download=False)
     testset = MazeDataset(base_dir_test, train=False, size=test_data, download=False)
 
-    # train_data.inputs=train_data.inputs[0:100]
-    # train_data.targets=train_data.targets[0:100]
+    train_split = int(0.8 * len(train_dataset))
 
-    train_split = int(0.8 * len(train_data))#change 1 to 0.8
+    trainset, valset = torch.utils.data.random_split(
+        train_dataset,
+        [train_split, len(train_dataset) - train_split],
+        generator=torch.Generator().manual_seed(42),
+    )
 
-    trainset, valset = torch.utils.data.random_split(train_data,
-                                                     [train_split,
-                                                      int(len(train_data) - train_split)],
-                                                     generator=torch.Generator().manual_seed(42))
+    trainloader = data.DataLoader(trainset, num_workers=0, batch_size=train_batch_size,
+                                  shuffle=shuffle, drop_last=True)
+    valloader = data.DataLoader(valset, num_workers=0, batch_size=test_batch_size,
+                                shuffle=False, drop_last=False)
+    testloader = data.DataLoader(testset, num_workers=0, batch_size=test_batch_size,
+                                 shuffle=False, drop_last=False)
 
-    trainloader = data.DataLoader(trainset,
-                                  num_workers=0,
-                                  batch_size=train_batch_size,
-                                  shuffle=shuffle,
-                                  drop_last=True)
-    valloader = data.DataLoader(valset,
-                                num_workers=0,
-                                batch_size=test_batch_size,
-                                shuffle=False,
-                                drop_last=False)
-    testloader = data.DataLoader(testset,
-                                 num_workers=0,
-                                 batch_size=test_batch_size,
-                                 shuffle=False,
-                                 drop_last=False)
-
-    loaders = {"train": trainloader, "test": testloader, "val": valloader}
-
-    return loaders
+    return {"train": trainloader, "test": testloader, "val": valloader}

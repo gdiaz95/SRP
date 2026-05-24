@@ -13,7 +13,6 @@ train_data_path: /mnt/drive2/gabriel_data/Lydia/train/mixed_2_3_4
 numchunks: 2
 overlap: 16
 parallel_testing: False
-# Termination condition hyperparameters (Table 16 in paper)
 tc_threshold: 0.65
 tc_first_batch: 20
 model:

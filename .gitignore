@@ -139,6 +139,9 @@ venv.bak/
 uv.lock
 .python-version
 
+#gif files
+gifs/
+
 #temporal files
 generate_hard_maze.py
 Robotica_2026.md

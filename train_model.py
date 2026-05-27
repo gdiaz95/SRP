@@ -68,7 +68,10 @@ def main(cfg: DictConfig):
     loaders = dt.utils.get_dataloaders(cfg.problem)
 
     if cfg.retrain:
-        cfg.problem.model.model_path = cfg.model_path
+        model_path = cfg.model_path
+        if model_path and not os.path.isabs(model_path):
+            model_path = os.path.join(hydra.utils.get_original_cwd(), model_path)
+        cfg.problem.model.model_path = model_path
 
     net, start_epoch, optimizer_state_dict = dt.utils.load_model_from_checkpoint(
         cfg.problem.name, cfg.problem.model, device
@@ -144,6 +147,8 @@ def main(cfg: DictConfig):
                 cfg.problem.model.test_iterations,
                 cfg.problem.name, device,
                 cfg.problem.numchunks, cfg.problem.overlap,
+                terminals, cfg.problem.parallel_testing,
+                False, False, False,
             )
             log.info(f"Training accuracy: {train_acc}")
             log.info(f"Val accuracy: {val_acc}")

@@ -63,16 +63,21 @@ def run_test(data_type, use_tc, iterations=140):
 def main():
     print("=" * 65)
     print("  Table 1: Synthetic maze accuracy — with vs without TC")
-    print("  Model: homeless-Sok  |  Iterations: 140  |  TC threshold: 0.65")
+    print("  Model: homeless-Sok  |  TC iterations: 20-140  |  No-TC cap: 59 (val-selected)  |  threshold: 0.65")
     print("=" * 65)
 
     results_tc    = {}
     results_no_tc = {}
 
+    # NO_TC_ITERS = 59: peak no-TC accuracy on 5-terminal validation set
+    # observed in the training log for the selected model (homeless-Sok epoch 16).
+    # This is the validation-selected iteration cap for the no-TC baseline.
+    NO_TC_ITERS = 59
+
     for data_type in DATA_TYPES:
         print(f"\n  [{data_type}]")
         results_tc[data_type]    = run_test(data_type, use_tc=True,  iterations=140)
-        results_no_tc[data_type] = run_test(data_type, use_tc=False, iterations=140)
+        results_no_tc[data_type] = run_test(data_type, use_tc=False, iterations=NO_TC_ITERS)
 
     # ── Print table ───────────────────────────────────────────────────────────
     splits = [dt.split('_')[0] for dt in DATA_TYPES]

@@ -632,9 +632,18 @@ def main():
     kou_s  = {}
     meh_s  = {}
     wave_s = {}
+    BREAKDOWN_DIR = os.path.join("results", "runtime_breakdown")
     for n in TERMINALS:
         tc_path = os.path.join(TC_DIR, f"TC_{n}_G_40_iters_rerun.npy")
         tc_s[n] = float(np.mean(np.load(tc_path))) if os.path.exists(tc_path) else 0.0
+
+        # Add mask gen + HD upscale + decode + transfer steps missing from Table 7
+        bd_path = os.path.join(BREAKDOWN_DIR, f"breakdown_{n}G.npy")
+        if os.path.exists(bd_path):
+            bd = np.load(bd_path, allow_pickle=True).item()
+            extra_s = (np.mean(bd["mask_gen"]) + np.mean(bd["hd_upscale"])
+                       + np.mean(bd["decode"]) + np.mean(bd["transfer_to_cpu"]))
+            tc_s[n] += extra_s
 
         kou_path  = os.path.join(APPROX_DIR, f"kou_{n}G.npy")
         meh_path  = os.path.join(APPROX_DIR, f"mehlhorn_{n}G.npy")
@@ -643,7 +652,7 @@ def main():
         meh_s[n]  = float(np.mean(np.load(meh_path)))  if os.path.exists(meh_path)  else 0.0
         wave_s[n] = float(np.mean(np.load(wave_path))) if os.path.exists(wave_path) else 0.0
 
-    print("\n  Fixed mean filter gen times loaded (s):")
+    print("\n  Fixed mean filter gen times loaded (s) — MazeNet includes full pipeline:")
     for n in TERMINALS:
         print(f"    {n}G: NET={tc_s[n]*1000:.1f}ms  Kou={kou_s[n]*1000:.1f}ms  "
               f"Meh={meh_s[n]*1000:.1f}ms  Wave={wave_s[n]*1000:.1f}ms")

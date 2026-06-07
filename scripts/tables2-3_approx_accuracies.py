@@ -139,14 +139,15 @@ def compute_accuracy(optimal_lengths, approx_lengths):
 
 
 def compute_ratio_on_mistakes(optimal_lengths, approx_lengths):
-    """Mean(approx/opt) conditioned on mistake cases (approx > opt).
-    Returns 1.0 if there are no mistakes."""
+    """Mean and std of (approx/opt) conditioned on mistake cases (approx > opt).
+    Returns (1.0, 0.0) if there are no mistakes."""
     opt = np.array(optimal_lengths, dtype=float)
     app = np.array(approx_lengths, dtype=float)
     mask = app > opt
     if not mask.any():
-        return 1.0
-    return float(np.mean(app[mask] / opt[mask]))
+        return 1.0, 0.0
+    ratios = app[mask] / opt[mask]
+    return float(np.mean(ratios)), float(np.std(ratios))
 
 
 # ── Per-data-type runner ───────────────────────────────────────────────────────
@@ -191,11 +192,11 @@ def run_data_type(data_type):
     acc_kou  = compute_accuracy(opt_lengths, kou_lengths)
     acc_meh  = compute_accuracy(opt_lengths, meh_lengths)
 
-    ratio_wave = compute_ratio_on_mistakes(opt_lengths, wave_lengths)
-    ratio_kou  = compute_ratio_on_mistakes(opt_lengths, kou_lengths)
-    ratio_meh  = compute_ratio_on_mistakes(opt_lengths, meh_lengths)
+    ratio_wave, std_wave = compute_ratio_on_mistakes(opt_lengths, wave_lengths)
+    ratio_kou,  std_kou  = compute_ratio_on_mistakes(opt_lengths, kou_lengths)
+    ratio_meh,  std_meh  = compute_ratio_on_mistakes(opt_lengths, meh_lengths)
 
-    return acc_wave, acc_kou, acc_meh, ratio_wave, ratio_kou, ratio_meh
+    return acc_wave, acc_kou, acc_meh, ratio_wave, std_wave, ratio_kou, std_kou, ratio_meh, std_meh
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -210,12 +211,12 @@ def main():
     for data_type in DATA_TYPES:
         print(f"\n  [{data_type}]")
         t0 = time.time()
-        acc_wave, acc_kou, acc_meh, ratio_wave, ratio_kou, ratio_meh = run_data_type(data_type)
+        acc_wave, acc_kou, acc_meh, ratio_wave, std_wave, ratio_kou, std_kou, ratio_meh, std_meh = run_data_type(data_type)
         elapsed = time.time() - t0
-        results[data_type] = (acc_wave, acc_kou, acc_meh, ratio_wave, ratio_kou, ratio_meh)
-        print(f"    Wavefront MST : {acc_wave:.2f}%  ratio|mistakes={ratio_wave:.4f}")
-        print(f"    Kou           : {acc_kou:.2f}%  ratio|mistakes={ratio_kou:.4f}")
-        print(f"    Mehlhorn      : {acc_meh:.2f}%  ratio|mistakes={ratio_meh:.4f}")
+        results[data_type] = (acc_wave, acc_kou, acc_meh, ratio_wave, std_wave, ratio_kou, std_kou, ratio_meh, std_meh)
+        print(f"    Wavefront MST : {acc_wave:.2f}%  ratio|mistakes={ratio_wave:.4f}±{std_wave:.4f}")
+        print(f"    Kou           : {acc_kou:.2f}%  ratio|mistakes={ratio_kou:.4f}±{std_kou:.4f}")
+        print(f"    Mehlhorn      : {acc_meh:.2f}%  ratio|mistakes={ratio_meh:.4f}±{std_meh:.4f}")
         print(f"    ({elapsed:.1f}s)")
 
     # ── Save results ──────────────────────────────────────────────────────────
@@ -224,8 +225,11 @@ def main():
     meh_arr  = np.array([results[dt][2] for dt in DATA_TYPES])
 
     wave_ratio_arr = np.array([results[dt][3] for dt in DATA_TYPES])
-    kou_ratio_arr  = np.array([results[dt][4] for dt in DATA_TYPES])
-    meh_ratio_arr  = np.array([results[dt][5] for dt in DATA_TYPES])
+    wave_std_arr   = np.array([results[dt][4] for dt in DATA_TYPES])
+    kou_ratio_arr  = np.array([results[dt][5] for dt in DATA_TYPES])
+    kou_std_arr    = np.array([results[dt][6] for dt in DATA_TYPES])
+    meh_ratio_arr  = np.array([results[dt][7] for dt in DATA_TYPES])
+    meh_std_arr    = np.array([results[dt][8] for dt in DATA_TYPES])
 
     np.save(os.path.join(RESULT_DIR, "wave_accuracies_rerun.npy"),  wave_arr / 100.0)
     np.save(os.path.join(RESULT_DIR, "kou_accuracies_rerun.npy"),   kou_arr)
@@ -233,6 +237,9 @@ def main():
     np.save(os.path.join(RESULT_DIR, "wave_ratios_rerun.npy"),      wave_ratio_arr)
     np.save(os.path.join(RESULT_DIR, "kou_ratios_rerun.npy"),       kou_ratio_arr)
     np.save(os.path.join(RESULT_DIR, "meh_ratios_rerun.npy"),       meh_ratio_arr)
+    np.save(os.path.join(RESULT_DIR, "wave_ratio_stds_rerun.npy"),  wave_std_arr)
+    np.save(os.path.join(RESULT_DIR, "kou_ratio_stds_rerun.npy"),   kou_std_arr)
+    np.save(os.path.join(RESULT_DIR, "meh_ratio_stds_rerun.npy"),   meh_std_arr)
     print(f"\n  Saved to {RESULT_DIR}/")
 
     # ── Print Table 2 ─────────────────────────────────────────────────────────
@@ -253,10 +260,11 @@ def main():
     print("  Table 3: Norm. edge count conditioned on mistakes")
     print(f"{'=' * 72}")
     print(f"  {'':15s}" + "".join(f"{s:>8s}" for s in splits))
-    print(f"  {'MazeNet (TC)':15s}" + "".join(f"{'1.00':>8s}" for _ in DATA_TYPES))
-    print(f"  {'Wavefront MST':15s}" + "".join(f"{results[dt][3]:8.2f}" for dt in DATA_TYPES))
-    print(f"  {'Mehlhorn':15s}" + "".join(f"{results[dt][5]:8.2f}" for dt in DATA_TYPES))
-    print(f"  {'Kou':15s}" + "".join(f"{results[dt][4]:8.2f}" for dt in DATA_TYPES))
+    def fmt(mean, std): return f"{mean:.2f}±{std:.2f}"
+    print(f"  {'MazeNet (TC)':15s}" + "".join(f"{'1.00±0.00':>14s}" for _ in DATA_TYPES))
+    print(f"  {'Wavefront MST':15s}" + "".join(f"{fmt(results[dt][3], results[dt][4]):>14s}" for dt in DATA_TYPES))
+    print(f"  {'Mehlhorn':15s}" + "".join(f"{fmt(results[dt][7], results[dt][8]):>14s}" for dt in DATA_TYPES))
+    print(f"  {'Kou':15s}" + "".join(f"{fmt(results[dt][5], results[dt][6]):>14s}" for dt in DATA_TYPES))
     print(f"{'=' * 72}\n")
 
 

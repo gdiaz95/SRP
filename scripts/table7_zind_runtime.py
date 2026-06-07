@@ -45,6 +45,7 @@ DATA_ROOT       = os.path.join("data", "zind", "big_floorplans")
 RESULT_DIR      = os.path.join("results", "table7_zind_runtime")
 APPROX_CACHE    = os.path.join(RESULT_DIR, "approx_timings")
 DIJKSTRA_TIMES  = os.path.join("results", "ratios_calculation_rooms", "times.npy")
+DIJKSTRA_ARRAYS = os.path.join("results", "ratios_calculation_rooms", "all_array_except_NET_{n}.npy")
 
 TERMINALS       = [5, 6, 7]
 TC_THRESHOLD    = 0.50    # ZInD threshold
@@ -199,7 +200,8 @@ def compute_approx_timings():
 
         for m in methods:
             if os.path.exists(cache[m]):
-                means[m][n] = float(np.mean(np.load(cache[m])))
+                arr = np.load(cache[m])
+                means[m][n] = (float(np.mean(arr)), float(np.std(arr)))
             else:
                 means[m][n] = float("nan")
 
@@ -209,21 +211,27 @@ def compute_approx_timings():
 # ── Table printer ─────────────────────────────────────────────────────────────
 
 def print_table(title, rows, terminals):
-    """rows: list of (label, {n: mean_s}) pairs."""
-    w = 14
-    print(f"\n{'=' * 72}")
+    """rows: list of (label, {n: mean_s | (mean_s, std_s)}) pairs."""
+    w = 20
+    print(f"\n{'=' * 80}")
     print(f"  {title}")
-    print(f"{'=' * 72}")
+    print(f"{'=' * 80}")
     print(f"  {'Method':22s}" + "".join(f"{f'{n} terminals':>{w}s}" for n in terminals))
     print(f"  {'-'*22}" + "-" * (w * len(terminals)))
     for label, values in rows:
         row = f"  {label:22s}"
         for n in terminals:
             v = values.get(n, float("nan"))
-            row += f"{v*1000:>{w}.2f}" if not np.isnan(v) else f"{'N/A':>{w}s}"
+            if isinstance(v, tuple):
+                mean_ms, std_ms = v[0] * 1000, v[1] * 1000
+                row += f"{f'{mean_ms:.2f}±{std_ms:.2f}':>{w}s}"
+            elif not np.isnan(v):
+                row += f"{v*1000:>{w}.2f}"
+            else:
+                row += f"{'N/A':>{w}s}"
         print(row)
     print(f"  {'(values in ms)':22s}")
-    print(f"{'=' * 72}")
+    print(f"{'=' * 80}")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -256,24 +264,30 @@ def main():
     print(f"\n  Computing / loading approximation timings (n_sample={N_APPROX_SAMPLE})...")
     approx = compute_approx_timings()
 
-    # ── Load Dijkstra times ───────────────────────────────────────────────────
+    # ── Load Dijkstra times (mean from times.npy, std from per-sample arrays) ──
     dij_dur = {}
-    if os.path.exists(DIJKSTRA_TIMES):
-        dij_times = np.load(DIJKSTRA_TIMES, allow_pickle=True).item()
-        for n in TERMINALS:
+    for n in TERMINALS:
+        arr_path = DIJKSTRA_ARRAYS.format(n=n)
+        if os.path.exists(arr_path):
+            arr = np.load(arr_path)          # shape (N, 4, 2): col0=exhaustive
+            times_s = arr[:, 0, 1]
+            dij_dur[n] = (float(np.mean(times_s)), float(np.std(times_s)))
+        elif os.path.exists(DIJKSTRA_TIMES):
+            dij_times = np.load(DIJKSTRA_TIMES, allow_pickle=True).item()
             if n in dij_times and "exhaustive" in dij_times[n]:
-                dij_dur[n] = dij_times[n]["exhaustive"]
-        print(f"\n  Dijkstra exhaustive times loaded from {DIJKSTRA_TIMES}")
+                dij_dur[n] = dij_times[n]["exhaustive"]  # scalar fallback
+    if dij_dur:
+        print(f"\n  MT-Dijkstra times loaded (mean±std from per-sample arrays)")
     else:
-        print(f"\n  [WARNING] {DIJKSTRA_TIMES} not found — Dijkstra row will be empty.")
+        print(f"\n  [WARNING] MT-Dijkstra timing files not found — row will be empty.")
 
     # ── Build rerun table ─────────────────────────────────────────────────────
     rows = [
-        ("MazeNet (TC)",        {n: float(np.mean(net_dur[n])) for n in TERMINALS}),
+        ("MazeNet (TC)",        {n: (float(np.mean(net_dur[n])), float(np.std(net_dur[n]))) for n in TERMINALS}),
         ("Wavefront MST",       approx["wavefront"]),
         ("Mehlhorn",            approx["mehlhorn"]),
         ("Kou",                 approx["kou"]),
-        ("Dijkstra exhaustive", dij_dur),
+        ("MT-Dijkstra",         dij_dur),
     ]
     print_table("Table 7 — ZInD Runtime", rows, TERMINALS)
 
